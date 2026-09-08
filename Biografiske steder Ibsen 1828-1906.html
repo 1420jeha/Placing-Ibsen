@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Henrik Ibsen &ndash; Oppholdssted 1828&ndash;1906</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Georgia, 'Times New Roman', serif; background: #1a1410; color: #e8dcc8; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  #header { position: relative; padding: 12px 20px 8px; background: #1a1410; border-bottom: 1px solid #3a2e22; flex-shrink: 0; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  #header h1 { font-size: 17px; font-weight: normal; letter-spacing: .08em; color: #c9b89a; }
+  #header .sub { font-size: 12px; color: #7a6a58; letter-spacing: .04em; }
+  #header .phases { font-size: 11px; color: #5a4e3e; letter-spacing: .03em; width: 100%; margin-top: 2px; }
+  #header .phases b { color: #9a8365; font-weight: normal; }
+
+  #main { display: flex; flex: 1; min-height: 0; }
+  #map { flex: 1; }
+
+  #sidebar { width: 240px; flex-shrink: 0; background: #13100d; border-left: 1px solid #2e2218; display: flex; flex-direction: column; overflow: hidden; }
+
+  #year-display { padding: 16px 16px 10px; text-align: center; border-bottom: 1px solid #2e2218; }
+  #year-num { font-size: 42px; font-weight: normal; color: #c9a96e; letter-spacing: .04em; line-height: 1; }
+  #year-label { font-size: 11px; color: #5a4e3e; letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
+  #phase-label { font-size: 10px; color: #7a5a30; letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
+
+  #controls { padding: 12px 16px; border-bottom: 1px solid #2e2218; }
+  #timeline { width: 100%; -webkit-appearance: none; appearance: none; height: 3px; background: #2e2218; outline: none; border-radius: 2px; cursor: pointer; }
+  #timeline::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #c9a96e; cursor: pointer; box-shadow: 0 0 6px rgba(201,169,110,.5); }
+  #timeline::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #c9a96e; cursor: pointer; border: none; }
+
+  #btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  button { flex: 1; padding: 7px 0; background: transparent; border: 1px solid #3a2e22; color: #9a8870; font-family: Georgia, serif; font-size: 12px; cursor: pointer; border-radius: 2px; transition: all .15s; }
+  button:hover { background: #2a2018; color: #c9b89a; border-color: #5a4e3e; }
+  button.active { background: #2a1e10; color: #c9a96e; border-color: #7a5a30; }
+
+  #speed-row { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+  #speed-row span { font-size: 11px; color: #5a4e3e; flex-shrink:0; }
+  #speed { flex: 1; -webkit-appearance: none; appearance: none; height: 2px; background: #2e2218; outline: none; cursor: pointer; }
+  #speed::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #7a6a58; cursor: pointer; }
+
+  #info-panel { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  #info-panel::-webkit-scrollbar { width: 4px; }
+  #info-panel::-webkit-scrollbar-track { background: transparent; }
+  #info-panel::-webkit-scrollbar-thumb { background: #2e2218; border-radius: 2px; }
+
+  .info-entry { padding: 8px 0; border-bottom: 1px solid #1e1812; }
+  .info-entry:last-child { border-bottom: none; }
+  .info-date { font-size: 11px; color: #7a6a58; letter-spacing: .04em; margin-bottom: 3px; }
+  .info-place { font-size: 13px; color: #c9b89a; }
+  .info-addr { font-size: 11px; color: #6a5a48; margin-top: 2px; line-height: 1.4; }
+
+  #counter { padding: 10px 16px; border-top: 1px solid #2e2218; font-size: 11px; color: #4a3e2e; text-align: center; letter-spacing: .04em; }
+
+  /* Map tiles dark override */
+  .leaflet-tile { filter: brightness(.7) saturate(.4) sepia(.3); }
+  .leaflet-control-zoom a { background: #1a1410 !important; color: #9a8870 !important; border-color: #3a2e22 !important; }
+  .leaflet-control-attribution { background: rgba(20,16,12,.8) !important; color: #3a2e22 !important; font-size: 9px !important; }
+  .leaflet-control-attribution a { color: #4a3e2e !important; }
+
+  .leaflet-popup-content-wrapper { background: #1a1410; border: 1px solid #3a2e22; border-radius: 4px; color: #c9b89a; box-shadow: 0 4px 20px rgba(0,0,0,.6); }
+  .leaflet-popup-tip { background: #1a1410; }
+  .leaflet-popup-content { margin: 10px 14px; font-family: Georgia, serif; }
+  .popup-year { font-size: 11px; color: #7a6a58; }
+  .popup-place { font-size: 14px; color: #e8c880; margin: 2px 0; }
+  .popup-addr { font-size: 11px; color: #7a6a58; line-height: 1.4; }
+
+  #trail-toggle { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Henrik Ibsen &mdash; Oppholdssted</h1>
+  <span class="sub">1828&ndash;1906 &nbsp;&middot;&nbsp; 201 lokasjoner</span>
+  <div class="phases"><b>Rad 2&ndash;20</b> Norden &amp; Europa &nbsp;&rarr;&nbsp; <b>rad 21&ndash;60</b> Norge &nbsp;&rarr;&nbsp; <b>rad 61&ndash;190</b> Norden, Europa &amp; Nord-Afrika &nbsp;&rarr;&nbsp; <b>rad 191&ndash;201</b> Norden</div>
+</div>
+
+<div id="main">
+  <div id="map"></div>
+
+  <div id="sidebar">
+    <div id="year-display">
+      <div id="year-num">1828</div>
+      <div id="year-label">&Aring;r</div>
+      <div id="phase-label">Norden &amp; Europa</div>
+    </div>
+
+    <div id="controls">
+      <input type="range" id="timeline" min="0" max="200" value="0" step="1">
+      <div id="btn-row">
+        <button id="btn-play" class="active">&#9654; Spill av</button>
+        <button id="btn-pause">&#9208; Pause</button>
+        <button id="btn-reset">&#9198; Start</button>
+      </div>
+      <div id="speed-row">
+        <span>Hastighet</span>
+        <input type="range" id="speed" min="1" max="10" value="4">
+      </div>
+      <div id="trail-toggle">
+        <button id="btn-trail" class="active" style="width:100%;flex:none;">Vis spor: P&aring;</button>
+      </div>
+    </div>
+
+    <div id="info-panel">
+      <div id="info-content"></div>
+    </div>
+
+    <div id="counter">Lokasjon 1 av 201</div>
+  </div>
+</div>
+
+<script>
+const LOCATIONS = [{"label": "Skien", "address": "", "lat": 59.21011, "lon": 9.60709, "start": "1828-03-20", "end": "1832-01-01", "phase": 1}, {"label": "Prindsensgate/ Skistredet 20, Skien", "address": "", "lat": 59.20862, "lon": 9.60839, "start": "1832-01-01", "end": "1835-06-01", "phase": 1}, {"label": "Venstøp", "address": "", "lat": 59.2382, "lon": 9.57323, "start": "1835-06-01", "end": "1843-10-01", "phase": 1}, {"label": "Snipetorp 27, Skien", "address": "", "lat": 59.20716, "lon": 9.61274, "start": "1843-10-01", "end": "1843-12-27", "phase": 1}, {"label": "Storgaden 75/7, Grimstad", "address": "Steamer", "lat": 58.3398, "lon": 8.59503, "start": "1844-01-03", "end": "1845-06-20", "phase": 1}, {"label": "Skien, Snipetorp 27?", "address": "Steamer", "lat": 59.20716, "lon": 9.61274, "start": "1845-06-20", "end": "1845-07-24", "phase": 1}, {"label": "Storgaden 75/7, Grimstad", "address": "Steamer", "lat": 58.3398, "lon": 8.59503, "start": "1845-07-24", "end": "1846-08-01", "phase": 1}, {"label": "Østergade 13/Henrik Ibsens Gate 14, Grimstad", "address": "", "lat": 58.34205, "lon": 8.59449, "start": "1845-07-24", "end": "1847-01-01", "phase": 1}, {"label": "Arendal", "address": "", "lat": 58.43072, "lon": 8.74983, "start": "1847-01-01", "end": "1847-01-05", "phase": 1}, {"label": "Østergade 13/Henrik Ibsens Gate 14, Grimstad", "address": "", "lat": 58.34205, "lon": 8.59449, "start": "1847-01-05", "end": "1848-07-01", "phase": 1}, {"label": "Skien", "address": "Steamer", "lat": 59.20511, "lon": 9.5785, "start": "1848-07-01", "end": "1848-10-30", "phase": 1}, {"label": "Østergade 13/Henrik Ibsens Gate 14, Grimstad", "address": "Steamer", "lat": 58.34205, "lon": 8.59449, "start": "1848-10-30", "end": "1850-04-13", "phase": 1}, {"label": "Skien", "address": "Steamer", "lat": 59.20622, "lon": 9.57994, "start": "1850-04-13", "end": "1850-04-27", "phase": 1}, {"label": "Vinkelgaden 17, Christiania", "address": "Steamer", "lat": 59.9119, "lon": 10.7343, "start": "1850-04-28", "end": "1850-07-01", "phase": 1}, {"label": "Møllergaden, Christiania", "address": "", "lat": 59.91564, "lon": 10.74874, "start": "1850-07-01", "end": "1851-10-16", "phase": 1}, {"label": "Fru Sontum's, Toldboden, Bergen", "address": "Steamer", "lat": 60.39963, "lon": 5.31406, "start": "1851-10-21", "end": "1852-04-15", "phase": 1}, {"label": "Reverentsgaden 205, at Kongens Nytorv, Copenhagen", "address": "", "lat": 55.67786, "lon": 12.58375, "start": "1852-04-20", "end": "1852-06-06", "phase": 1}, {"label": "Töpfergasse 13, Dresden", "address": "", "lat": 51.05242, "lon": 13.74034, "start": "1852-06-09", "end": "1852-07-15", "phase": 1}, {"label": "Fru Sontum's, Bergen", "address": "Steamer", "lat": 60.39963, "lon": 5.31406, "start": "1852-07-15", "end": "1853-05-01", "phase": 1}, {"label": "Den nationale scene, Bergen", "address": "", "lat": 60.39229, "lon": 5.31984, "start": "1853-04-01", "end": "1856-03-02", "phase": 2}, {"label": "Trondheim", "address": "Steamer", "lat": 63.43463, "lon": 10.39846, "start": "1856-03-02", "end": "1856-04-01", "phase": 2}, {"label": "Den nationale scene, Bergen", "address": "Steamer", "lat": 60.39229, "lon": 5.31984, "start": "1856-04-01", "end": "1857-07-18", "phase": 2}, {"label": "Christiania", "address": "Steamer", "lat": 59.91382, "lon": 10.73874, "start": "1857-07-21", "end": "1857-08-15", "phase": 2}, {"label": "Den nationale scene, Bergen", "address": "Steamer", "lat": 60.39229, "lon": 5.31984, "start": "1857-08-18", "end": "1857-09-01", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer", "lat": 59.91299, "lon": 10.7414, "start": "1857-09-03", "end": "1858-06-01", "phase": 2}, {"label": "Bergen", "address": "Steamer", "lat": 60.38807, "lon": 5.33185, "start": "1858-06-01", "end": "1858-06-19", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer", "lat": 59.91299, "lon": 10.7414, "start": "1858-06-22", "end": "1859-07-01", "phase": 2}, {"label": "Skien", "address": "Steamer", "lat": 59.20622, "lon": 9.57994, "start": "1859-07-01", "end": "1859-07-08", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer", "lat": 59.91299, "lon": 10.7414, "start": "1859-07-08", "end": "1860-07-01", "phase": 2}, {"label": "Buslaaten, Gjerpen", "address": "Steamer", "lat": 59.22337, "lon": 9.60802, "start": "1860-07-01", "end": "1860-08-06", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer", "lat": 59.91299, "lon": 10.7414, "start": "1860-08-06", "end": "1862-06-24", "phase": 2}, {"label": "Christiania stasjon", "address": "tog", "lat": 59.91056, "lon": 10.75139, "start": "1862-06-24", "end": "1862-06-24", "phase": 2}, {"label": "Minnesund", "address": "båt", "lat": 60.39139, "lon": 11.21333, "start": "1862-06-24", "end": "1862-06-24", "phase": 2}, {"label": "Lillehammer", "address": "Tog til Eidsvoll, D/S Dronningen til Lillehammer", "lat": 61.11472, "lon": 10.4675, "start": "1862-06-24", "end": "1862-06-25", "phase": 2}, {"label": "Øyer", "address": "Til fots til Moshus", "lat": 61.26528, "lon": 10.41333, "start": "1862-06-25", "end": "1862-06-26", "phase": 2}, {"label": "Holmen, sør for Tretten", "address": "", "lat": 61.31667, "lon": 10.31667, "start": "1862-06-26", "end": "1862-06-26", "phase": 2}, {"label": "Ringebu", "address": "Til fots til Holmen, båt til Losnæs, til fots til Elstad.", "lat": 61.53556, "lon": 10.30806, "start": "1862-06-26", "end": "1862-06-27", "phase": 2}, {"label": "Listad i Fron", "address": "Til fots til Listad.", "lat": 61.56889, "lon": 9.92333, "start": "1862-06-27", "end": "1862-06-29", "phase": 2}, {"label": "Aasaaren, mellom Otta og Vågå", "address": "Skyss og til fots til Åsåren", "lat": 61.77056, "lon": 9.54139, "start": "1862-06-29", "end": "1862-07-02", "phase": 2}, {"label": "Svee", "address": "Skyss og til fots til Svee", "lat": 61.875, "lon": 9.09583, "start": "1862-07-02", "end": "1862-07-03", "phase": 2}, {"label": "Garmo i Lom", "address": "Båt til Garmo", "lat": 61.84889, "lon": 8.80528, "start": "1862-07-03", "end": "1862-07-04", "phase": 2}, {"label": "Bøverdalen", "address": "Til fots til Røisem, til hest til Præstsætren", "lat": 61.83861, "lon": 8.5675, "start": "1862-07-04", "end": "1862-07-05", "phase": 2}, {"label": "Sognefjellet", "address": "Til fots over fjellet til Skjolden (posisjon anslått)", "lat": 61.51, "lon": 8.15, "start": "1862-07-05", "end": "1862-07-05", "phase": 2}, {"label": "Skjolden", "address": "Båt fra Skjolden til vadheim", "lat": 61.49028, "lon": 7.60056, "start": "1862-07-05", "end": "1862-07-06", "phase": 2}, {"label": "Lærdaal-Vadheim", "address": "Båt ca 2 døgn", "lat": 61.05111, "lon": 7.59778, "start": "1862-07-06", "end": "1862-07-07", "phase": 2}, {"label": "Sande", "address": "Til fots fra Vadheim til Sande*", "lat": 61.325, "lon": 5.7975, "start": "1862-07-07", "end": "1862-07-08", "phase": 2}, {"label": "Jølster", "address": "*", "lat": 61.54167, "lon": 6.40889, "start": "1862-07-08", "end": "1862-07-09", "phase": 2}, {"label": "Reed", "address": "*", "lat": 61.73611, "lon": 6.41111, "start": "1862-07-09", "end": "1862-07-10", "phase": 2}, {"label": "Falejdet, Stryn", "address": "*", "lat": 61.83861, "lon": 6.86278, "start": "1862-07-10", "end": "1862-07-11", "phase": 2}, {"label": "Hellesylt, Sunelven/Sykkylven", "address": "*", "lat": 62.08778, "lon": 6.86056, "start": "1862-07-11", "end": "1862-07-16", "phase": 2}, {"label": "Søholt, innenfor Ålesund", "address": "Dampskipet Søndmøre til Søholt", "lat": 62.48361, "lon": 6.81056, "start": "1862-07-16", "end": "1862-07-18", "phase": 2}, {"label": "Solnør gård ved Sjøholt, Skodje", "address": "", "lat": 62.48778, "lon": 6.73028, "start": "1862-07-18", "end": "1862-07-27", "phase": 2}, {"label": "Vestnes i Romsdalsfjorden", "address": "", "lat": 62.62528, "lon": 7.08694, "start": "1862-07-27", "end": "1862-07-30", "phase": 2}, {"label": "Åndalsnes", "address": "", "lat": 62.56722, "lon": 7.68694, "start": "1862-07-30", "end": "1862-07-31", "phase": 2}, {"label": "Dombås", "address": "", "lat": 62.07556, "lon": 9.12778, "start": "1862-07-31", "end": "1862-08-01", "phase": 2}, {"label": "Ruste ved Vinstra", "address": "", "lat": 61.575, "lon": 9.73444, "start": "1862-08-01", "end": "1862-08-02", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer, row boat, foot, and coach", "lat": 59.91299, "lon": 10.7414, "start": "1862-08-01", "end": "1863-06-12", "phase": 2}, {"label": "Bergen, staying with Randolph Nilsen", "address": "Steamer", "lat": 60.38807, "lon": 5.33185, "start": "1863-06-14", "end": "1863-06-17", "phase": 2}, {"label": "Akersgaden and Carl Johansgade, Christiania", "address": "Steamer", "lat": 59.91299, "lon": 10.7414, "start": "1863-06-21", "end": "1864-04-05", "phase": 2}, {"label": "Copenhagen", "address": "Steamer", "lat": 55.67629, "lon": 12.56812, "start": "1864-04-06", "end": "1864-04-20", "phase": 3}, {"label": "Lübeck", "address": "Ship", "lat": 53.86956, "lon": 10.68758, "start": "1864-04-20", "end": "1864-05-04", "phase": 3}, {"label": "Berlin", "address": "", "lat": 52.52341, "lon": 13.4114, "start": "1864-05-04", "end": "1864-05-09", "phase": 3}, {"label": "Prag", "address": "Train", "lat": 50.0875, "lon": 14.42139, "start": "1864-05-06", "end": "1864-05-07", "phase": 3}, {"label": "Wien", "address": "Train", "lat": 48.20833, "lon": 16.3725, "start": "1864-05-07", "end": "1864-05-09", "phase": 3}, {"label": "Trieste", "address": "Train", "lat": 45.65028, "lon": 13.77028, "start": "1864-05-09", "end": "1864-05-10", "phase": 3}, {"label": "Venezia", "address": "Train", "lat": 45.4375, "lon": 12.33583, "start": "1864-05-10", "end": "1864-06-09", "phase": 3}, {"label": "Firenze", "address": "", "lat": 43.77139, "lon": 11.25417, "start": "1864-06-12", "end": "1864-06-15", "phase": 3}, {"label": "Milano", "address": "Train", "lat": 45.46694, "lon": 9.19, "start": "1864-06-13", "end": "1864-06-14", "phase": 3}, {"label": "Genova", "address": "Train", "lat": 44.40722, "lon": 8.93389, "start": "1864-06-14", "end": "1864-06-19", "phase": 3}, {"label": "Rome", "address": "Train", "lat": 41.90662, "lon": 12.47647, "start": "1864-06-19", "end": "1864-06-24", "phase": 3}, {"label": "Dietrichson's villa at Genzano on Lake Nemi", "address": "", "lat": 41.708, "lon": 12.68901, "start": "1864-06-24", "end": "1864-06-29", "phase": 3}, {"label": "Genzano", "address": "Horse", "lat": 41.708, "lon": 12.68901, "start": "1864-06-29", "end": "1864-09-01", "phase": 3}, {"label": "Rome", "address": "", "lat": 41.90662, "lon": 12.47647, "start": "1864-09-01", "end": "1864-10-01", "phase": 3}, {"label": "55 Via Capo le Case, Rome", "address": "", "lat": 41.90399, "lon": 12.48522, "start": "1864-10-01", "end": "1865-06-20", "phase": 3}, {"label": "Ariccia", "address": "", "lat": 41.72127, "lon": 12.67349, "start": "1865-06-20", "end": "1865-09-30", "phase": 3}, {"label": "55 Via Capo le Case, Rome", "address": "", "lat": 41.90399, "lon": 12.48522, "start": "1865-09-30", "end": "1866-06-01", "phase": 3}, {"label": "Palazzo Gratiosi, Frascati", "address": "", "lat": 41.80621, "lon": 12.68043, "start": "1866-06-01", "end": "1866-10-01", "phase": 3}, {"label": "55 Via Capo le Case, Rome", "address": "", "lat": 41.90399, "lon": 12.48522, "start": "1866-10-01", "end": "1867-05-21", "phase": 3}, {"label": "Casamicciola, Isle of Ischia", "address": "", "lat": 40.74767, "lon": 13.91298, "start": "1867-05-21", "end": "1867-08-15", "phase": 3}, {"label": "Sorrento", "address": "Ship", "lat": 40.62632, "lon": 14.37574, "start": "1867-08-16", "end": "1867-10-25", "phase": 3}, {"label": "Pompeii", "address": "", "lat": 40.74918, "lon": 14.50074, "start": "1867-10-25", "end": "1867-10-27", "phase": 3}, {"label": "Naples", "address": "", "lat": 40.84, "lon": 14.25287, "start": "1867-10-27", "end": "1867-10-31", "phase": 3}, {"label": "Piedimonte San Germano", "address": "Strandet på vei fra Napoli til Roma pga. krigshandlinger (identifisert av Jens-Morten Hanssen)", "lat": 41.49732, "lon": 13.74993, "start": "1867-10-31", "end": "1867-11-08", "phase": 3}, {"label": "55 Via Capo le Case, Rome", "address": "Train", "lat": 41.90399, "lon": 12.48522, "start": "1867-11-08", "end": "1868-05-09", "phase": 3}, {"label": "Florence", "address": "", "lat": 43.76873, "lon": 11.2569, "start": "1868-05-09", "end": "1868-05-17", "phase": 3}, {"label": "Bologna", "address": "", "lat": 44.49445, "lon": 11.34923, "start": "1868-05-17", "end": "1868-05-19", "phase": 3}, {"label": "Venice", "address": "", "lat": 45.43434, "lon": 12.33878, "start": "1868-05-19", "end": "1868-05-27", "phase": 3}, {"label": "Bozen (now Bolzano)", "address": "", "lat": 46.49517, "lon": 11.3541, "start": "1868-05-27", "end": "1868-06-06", "phase": 3}, {"label": "Berchtesgaden", "address": "Coach (at least part of the way)", "lat": 47.63136, "lon": 13.0036, "start": "1868-06-15", "end": "1868-08-31", "phase": 3}, {"label": "Maximilianplatz 13, Munich", "address": "", "lat": 48.14214, "lon": 11.57304, "start": "1868-08-31", "end": "1868-09-30", "phase": 3}, {"label": "An der Frauenkirche 6, Dresden", "address": "", "lat": 51.05233, "lon": 13.74268, "start": "1868-10-01", "end": "1869-07-19", "phase": 3}, {"label": "Königsbrücker-Strasse 33, Dresden", "address": "", "lat": 51.06819, "lon": 13.74782, "start": "1869-07-20", "end": "1869-07-20", "phase": 3}, {"label": "Herkulesgatan 5", "address": "", "lat": 59.32982, "lon": 18.05832, "start": "1869-07-20", "end": "1869-08-01", "phase": 3}, {"label": "Lake Mälaren", "address": "", "lat": 59.38177, "lon": 17.41979, "start": "1869-08-01", "end": "1869-08-10", "phase": 3}, {"label": "Herkulesgatan 5", "address": "", "lat": 59.32982, "lon": 18.05832, "start": "1869-08-10", "end": "1869-09-29", "phase": 3}, {"label": "Königsbrücker-Strasse 33, Dresden", "address": "", "lat": 51.06819, "lon": 13.74782, "start": "1869-09-29", "end": "1869-10-01", "phase": 3}, {"label": "Marseille", "address": "Train", "lat": 43.28626, "lon": 5.38322, "start": "1869-10-01", "end": "1869-10-09", "phase": 3}, {"label": "Hôtel d'Europe, Alexandria", "address": "Carriage", "lat": 31.2135, "lon": 29.9443, "start": "1869-10-13", "end": "1869-10-17", "phase": 3}, {"label": "Hôtel de l'Orient Cairo", "address": "", "lat": 30.0571, "lon": 31.2272, "start": "1869-10-17", "end": "1869-10-22", "phase": 3}, {"label": "SS Ferus på Nilen", "address": "Elvedamper sørover til Aswan og tilbake til Kairo", "lat": 24.0818, "lon": 32.9108, "start": "1869-10-22", "end": "1869-11-13", "phase": 3}, {"label": "Cairo (same hotel as before?)", "address": "Steamer", "lat": 31.2272, "lon": 31.2272, "start": "1869-11-13", "end": "1869-11-15", "phase": 3}, {"label": "Alexandria", "address": "Train/ship", "lat": 31.2135, "lon": 29.9443, "start": "1869-11-15", "end": "1869-11-16", "phase": 3}, {"label": "Port Said", "address": "Train/ship", "lat": 31.2603, "lon": 32.2965, "start": "1869-11-16", "end": "1869-11-18", "phase": 3}, {"label": "Ismailia, Cairo, Alexandria, Marseille", "address": "Ship, train", "lat": 30.591, "lon": 32.2553, "start": "1869-11-20", "end": "1869-11-29", "phase": 3}, {"label": "Paris", "address": "Train/ship", "lat": 48.85667, "lon": 2.35099, "start": "1869-11-29", "end": "1869-12-15", "phase": 3}, {"label": "An der Frauenkirche 6, Dresden", "address": "", "lat": 51.05233, "lon": 13.74268, "start": "1869-12-15", "end": "1870-07-01", "phase": 3}, {"label": "Teplitz, Czech Republic (now Teplice-Šanov)", "address": "", "lat": 50.63976, "lon": 13.8262, "start": "1870-07-01", "end": "1870-07-19", "phase": 3}, {"label": "Copenhagen", "address": "Ship", "lat": 55.67629, "lon": 12.56812, "start": "1870-07-19", "end": "1870-09-25", "phase": 3}, {"label": "An der Frauenkirche 6, Dresden", "address": "", "lat": 51.05233, "lon": 13.74268, "start": "1870-09-25", "end": "1871-07-14", "phase": 3}, {"label": "Dippoldiswalderstrasse, Dresden", "address": "", "lat": 51.04697, "lon": 13.73406, "start": "1871-07-14", "end": "1872-07-01", "phase": 3}, {"label": "Grosse Plauensche Strasse 9, Dresden", "address": "", "lat": 51.04461, "lon": 13.72961, "start": "1872-07-01", "end": "1872-07-15", "phase": 3}, {"label": "Berchtesgaden", "address": "", "lat": 47.63136, "lon": 13.0036, "start": "1872-07-15", "end": "1872-08-30", "phase": 3}, {"label": "Grosse Plauensche Strasse 9, Dresden", "address": "", "lat": 51.04461, "lon": 13.72961, "start": "1872-08-30", "end": "1872-11-01", "phase": 3}, {"label": "Wettiner Strasse 22, Dresden", "address": "", "lat": 51.0534, "lon": 13.70778, "start": "1872-11-01", "end": "1873-06-12", "phase": 3}, {"label": "Augarten Allée-Strasse no. 23 (now Heinestrasse), Vienna", "address": "Train", "lat": 48.22069, "lon": 16.38593, "start": "1873-06-13", "end": "1873-07-30", "phase": 3}, {"label": "Pillnitz", "address": "", "lat": 51.00852, "lon": 13.87509, "start": "1873-07-30", "end": "1873-09-01", "phase": 3}, {"label": "Wettiner Strasse 22, Dresden", "address": "", "lat": 51.0534, "lon": 13.70778, "start": "1873-09-01", "end": "1874-07-18", "phase": 3}, {"label": "Pilestrædet, Christiania", "address": "Ship", "lat": 59.92049, "lon": 10.73409, "start": "1874-07-19", "end": "1874-08-01", "phase": 3}, {"label": "Stockholm", "address": "", "lat": 59.33279, "lon": 18.06449, "start": "1874-08-01", "end": "1874-08-07", "phase": 3}, {"label": "Pilestrædet, Christiania", "address": "", "lat": 59.92049, "lon": 10.73409, "start": "1874-08-07", "end": "1874-09-30", "phase": 3}, {"label": "Wettiner Strasse 22, Dresden", "address": "Ship", "lat": 51.0534, "lon": 13.70778, "start": "1874-09-30", "end": "1875-04-13", "phase": 3}, {"label": "Schönfeldt-Strasse 17, Munich", "address": "", "lat": 48.14257, "lon": 11.58849, "start": "1875-05-01", "end": "1875-08-22", "phase": 3}, {"label": "Kitzbühel", "address": "", "lat": 47.44547, "lon": 12.39194, "start": "1875-08-22", "end": "1875-10-23", "phase": 3}, {"label": "Schönfeldt-Strasse 17, Munich", "address": "", "lat": 48.14257, "lon": 11.58849, "start": "1875-10-23", "end": "1876-05-30", "phase": 3}, {"label": "Berlin", "address": "", "lat": 52.52341, "lon": 13.4114, "start": "1876-05-30", "end": "1876-06-10", "phase": 3}, {"label": "Duke of Meiningen's summer palace in Liebenstein (now Schloss Altenstein near Bad Liebenstein)", "address": "", "lat": 50.83525, "lon": 10.34922, "start": "1876-06-10", "end": "1876-06-12", "phase": 3}, {"label": "Schönfeldt-Strasse 17, Munich", "address": "", "lat": 48.14257, "lon": 11.58849, "start": "1876-06-12", "end": "1876-08-05", "phase": 3}, {"label": "Brauhaus Inn, Gossensass", "address": "Train", "lat": 46.9382, "lon": 11.44417, "start": "1876-08-05", "end": "1876-09-01", "phase": 3}, {"label": "Kaltern", "address": "", "lat": 46.41426, "lon": 11.24237, "start": "1876-09-01", "end": "1876-09-30", "phase": 3}, {"label": "Schönfeldt-Strasse 17, Munich", "address": "Train", "lat": 48.14257, "lon": 11.58849, "start": "1876-09-30", "end": "1877-05-01", "phase": 3}, {"label": "Schellingstrasse 30, Munich", "address": "", "lat": 48.15031, "lon": 11.57586, "start": "1877-05-01", "end": "1877-08-24", "phase": 3}, {"label": "Stockholm", "address": "", "lat": 59.33279, "lon": 18.06449, "start": "1877-08-27", "end": "1877-09-04", "phase": 3}, {"label": "Upsala University", "address": "Train", "lat": 59.85919, "lon": 17.63149, "start": "1877-09-04", "end": "1877-09-06", "phase": 3}, {"label": "Stockholm", "address": "Train", "lat": 59.33279, "lon": 18.06449, "start": "1877-09-06", "end": "1877-09-13", "phase": 3}, {"label": "Hotel d'Angleterre, Copenhagen (opposite the Royal Theatre)", "address": "", "lat": 55.68061, "lon": 12.58494, "start": "1877-09-14", "end": "1877-09-20", "phase": 3}, {"label": "Schellingstrasse 30, Munich", "address": "", "lat": 48.15031, "lon": 11.57586, "start": "1877-09-20", "end": "1878-08-15", "phase": 3}, {"label": "Gossensass", "address": "", "lat": 46.9382, "lon": 11.44417, "start": "1878-08-15", "end": "1878-09-20", "phase": 3}, {"label": "Via dei Due Macelli (on a corner next to a church), Rome", "address": "", "lat": 41.90391, "lon": 12.48438, "start": "1878-09-30", "end": "1879-07-05", "phase": 3}, {"label": "Albergo della Luna, Amalfi, Italy", "address": "", "lat": 40.63436, "lon": 14.60257, "start": "1879-07-05", "end": "1879-09-30", "phase": 3}, {"label": "Hotel Tramontano, Sorrento", "address": "", "lat": 40.62714, "lon": 14.37227, "start": "1879-09-30", "end": "1879-10-07", "phase": 3}, {"label": "Rome", "address": "", "lat": 41.90662, "lon": 12.47647, "start": "1879-10-07", "end": "1879-10-14", "phase": 3}, {"label": "Amalienstrasse 50, Munich", "address": "", "lat": 48.14967, "lon": 11.57804, "start": "1879-10-14", "end": "1880-08-01", "phase": 3}, {"label": "Salzburger Hof, Berchtesgaden", "address": "Train, coach", "lat": 47.63136, "lon": 13.0036, "start": "1880-08-11", "end": "1880-10-01", "phase": 3}, {"label": "Amalienstrasse 50, Munich", "address": "Train", "lat": 48.14967, "lon": 11.57804, "start": "1880-10-01", "end": "1880-11-02", "phase": 3}, {"label": "Hotel, Rome", "address": "", "lat": 41.90662, "lon": 12.47647, "start": "1880-11-04", "end": "1880-11-11", "phase": 3}, {"label": "Via Capo le Case 75, Rome", "address": "", "lat": 41.90385, "lon": 12.48438, "start": "1880-11-11", "end": "1881-06-28", "phase": 3}, {"label": "Hotel Tramontano, Sorrento", "address": "", "lat": 40.62714, "lon": 14.37227, "start": "1881-06-28", "end": "1881-11-05", "phase": 3}, {"label": "Via Capo le Case 75, Rome", "address": "", "lat": 41.90385, "lon": 12.48438, "start": "1881-11-05", "end": "1882-08-01", "phase": 3}, {"label": "Gröbner family hotel, Gossensass", "address": "", "lat": 46.9382, "lon": 11.44417, "start": "1882-08-01", "end": "1882-10-09", "phase": 3}, {"label": "Hotel Elefant, Brixen", "address": "", "lat": 46.71938, "lon": 11.65306, "start": "1882-10-09", "end": "1882-11-24", "phase": 3}, {"label": "Via Capo le Case 75, Rome", "address": "", "lat": 41.90385, "lon": 12.48438, "start": "1882-11-24", "end": "1883-06-30", "phase": 3}, {"label": "Gröbner family hotel, Gossensass", "address": "", "lat": 46.9382, "lon": 11.44417, "start": "1883-06-30", "end": "1883-10-01", "phase": 3}, {"label": "Bozen (now Bolzano)", "address": "", "lat": 46.49517, "lon": 11.3541, "start": "1883-10-01", "end": "1883-10-30", "phase": 3}, {"label": "Via Capo le Case 75, Rome", "address": "", "lat": 41.90385, "lon": 12.48438, "start": "1883-10-30", "end": "1884-06-30", "phase": 3}, {"label": "Gröbner family hotel, Gossensass", "address": "Train", "lat": 46.9382, "lon": 11.44417, "start": "1884-06-30", "end": "1884-09-10", "phase": 3}, {"label": "Schwaz", "address": "Train", "lat": 47.372, "lon": 11.66483, "start": "1884-09-10", "end": "1884-09-13", "phase": 3}, {"label": "Gröbner family hotel, Gossensass", "address": "Train", "lat": 46.9382, "lon": 11.44417, "start": "1884-09-13", "end": "1884-11-01", "phase": 3}, {"label": "Bozen (now Bolzano)", "address": "Train", "lat": 46.49517, "lon": 11.3541, "start": "1884-11-01", "end": "1884-11-13", "phase": 3}, {"label": "Via Capo le Case 75, Rome", "address": "Train", "lat": 41.90385, "lon": 12.48438, "start": "1884-11-13", "end": "1885-06-04", "phase": 3}, {"label": "Christiania", "address": "", "lat": 59.91382, "lon": 10.73874, "start": "1885-06-05", "end": "1885-06-11", "phase": 3}, {"label": "Trondheim", "address": "Train", "lat": 63.43463, "lon": 10.39846, "start": "1885-06-11", "end": "1885-07-11", "phase": 3}, {"label": "Hotel Alexandra, Molde", "address": "Ship", "lat": 62.73481, "lon": 7.15481, "start": "1885-07-11", "end": "1885-09-05", "phase": 3}, {"label": "Bergen", "address": "Ship", "lat": 60.38807, "lon": 5.33185, "start": "1885-09-05", "end": "1885-09-20", "phase": 3}, {"label": "Christiania", "address": "Ship", "lat": 59.91382, "lon": 10.73874, "start": "1885-09-20", "end": "1885-09-29", "phase": 3}, {"label": "Hotel d'Angleterre, Copenhagen (opposite the Royal Theatre)", "address": "Ship", "lat": 55.68061, "lon": 12.58494, "start": "1885-09-29", "end": "1885-10-15", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1885-10-15", "end": "1886-12-19", "phase": 3}, {"label": "Palace at Meiningen", "address": "Train", "lat": 50.57047, "lon": 10.41273, "start": "1886-12-20", "end": "1886-12-23", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "Train", "lat": 48.13839, "lon": 11.5834, "start": "1886-12-23", "end": "1887-01-08", "phase": 3}, {"label": "Berlin", "address": "Train", "lat": 52.52341, "lon": 13.4114, "start": "1887-01-07", "end": "1887-01-12", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "Train", "lat": 48.13839, "lon": 11.5834, "start": "1887-01-12", "end": "1887-04-15", "phase": 3}, {"label": "Augsburg", "address": "", "lat": 48.36546, "lon": 10.89477, "start": "1887-04-15", "end": "1887-04-18", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1887-04-18", "end": "1887-06-30", "phase": 3}, {"label": "Frederikshavn, Denmark", "address": "", "lat": 57.44088, "lon": 10.53864, "start": "1887-06-30", "end": "1887-07-10", "phase": 3}, {"label": "Hotel Harmonien, Sæby, Denmark", "address": "", "lat": 57.33471, "lon": 10.51823, "start": "1887-07-10", "end": "1887-08-31", "phase": 3}, {"label": "Frederikshavn, Denmark", "address": "", "lat": 57.44088, "lon": 10.53864, "start": "1887-08-31", "end": "1887-09-08", "phase": 3}, {"label": "Gothenburg, Sweden", "address": "Ship", "lat": 57.69698, "lon": 11.98638, "start": "1887-09-08", "end": "1887-09-14", "phase": 3}, {"label": "Stockholm", "address": "Ship", "lat": 59.33279, "lon": 18.06449, "start": "1887-09-14", "end": "1887-09-26", "phase": 3}, {"label": "Copenhagen", "address": "Ship", "lat": 55.67629, "lon": 12.56812, "start": "1887-09-26", "end": "1887-10-08", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1887-10-08", "end": "1889-03-02", "phase": 3}, {"label": "Hotel du Nord, Berlin", "address": "", "lat": 52.52341, "lon": 13.4114, "start": "1889-03-03", "end": "1889-03-07", "phase": 3}, {"label": "Weimar", "address": "", "lat": 50.97916, "lon": 11.32428, "start": "1889-03-07", "end": "1889-03-14", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1889-03-14", "end": "1889-07-01", "phase": 3}, {"label": "Gröbner family hotel, Gossensass", "address": "", "lat": 46.9382, "lon": 11.44417, "start": "1889-07-01", "end": "1889-10-01", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1889-10-01", "end": "1891-02-09", "phase": 3}, {"label": "Berlin", "address": "", "lat": 52.52341, "lon": 13.4114, "start": "1891-02-09", "end": "1891-02-11", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1891-02-11", "end": "1891-04-01", "phase": 3}, {"label": "Vienna", "address": "", "lat": 48.20921, "lon": 16.37278, "start": "1891-04-01", "end": "1891-04-19", "phase": 3}, {"label": "Budapest", "address": "", "lat": 47.49841, "lon": 19.04076, "start": "1891-04-19", "end": "1891-04-28", "phase": 3}, {"label": "Maximilianstrasse 32, Munich", "address": "", "lat": 48.13839, "lon": 11.5834, "start": "1891-04-28", "end": "1891-07-01", "phase": 3}, {"label": "Christiania", "address": "Ship", "lat": 59.91382, "lon": 10.73874, "start": "1891-07-16", "end": "1891-07-23", "phase": 4}, {"label": "Trondheim", "address": "Train", "lat": 63.43463, "lon": 10.39846, "start": "1891-07-24", "end": "1891-07-25", "phase": 4}, {"label": "Nordkapp", "address": "Cruise til Nordkapp", "lat": 71.1725, "lon": 25.79444, "start": "1891-07-25", "end": "1891-07-25", "phase": 4}, {"label": "Christiania", "address": "Tilbake fra Nordkapp-cruiset", "lat": 59.91382, "lon": 10.73874, "start": "1891-08-07", "end": "1891-08-07", "phase": 4}, {"label": "Grand Hotel, Christiania", "address": "Ship", "lat": 59.91367, "lon": 10.7393, "start": "1891-08-07", "end": "1891-10-01", "phase": 4}, {"label": "7B (later 13B) Viktoria Terrasse (corner house)", "address": "", "lat": 59.91417, "lon": 10.72887, "start": "1891-10-21", "end": "1895-10-15", "phase": 4}, {"label": "Corner of Arbins Gade and Drammensveien", "address": "", "lat": 59.91498, "lon": 10.7273, "start": "1895-10-15", "end": "1898-03-29", "phase": 4}, {"label": "Hotel d'Angleterre, Copenhagen (opposite the Royal Theatre)", "address": "Train", "lat": 55.68061, "lon": 12.58494, "start": "1898-03-31", "end": "1898-04-06", "phase": 4}, {"label": "Hotel Rydberg, Stockholm", "address": "Train", "lat": 59.32966, "lon": 18.06832, "start": "1898-04-06", "end": "1898-04-17", "phase": 4}, {"label": "Corner of Arbiens Gade and Drammensveien", "address": "Train", "lat": 59.91498, "lon": 10.7273, "start": "1898-04-17", "end": "1900-06-08", "phase": 4}, {"label": "Hjertnes hovedgaard, Sandefjord", "address": "", "lat": 59.13425, "lon": 10.09169, "start": "1900-06-08", "end": "1900-09-01", "phase": 4}, {"label": "Corner of Arbiens Gade and Drammensveien", "address": "", "lat": 59.91498, "lon": 10.7273, "start": "1900-09-01", "end": "1906-05-23", "phase": 4}];
+
+const PHASE_NAMES = { 1: 'Norden & Europa', 2: 'Norge', 3: 'Norden, Europa & Nord-Afrika', 4: 'Norden' };
+
+function computeBounds(pts) {
+  const lats = pts.map(p => p.lat), lons = pts.map(p => p.lon);
+  return L.latLngBounds([Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]);
+}
+const PHASE_BOUNDS = {};
+[1, 2, 3, 4].forEach(ph => {
+  const pts = LOCATIONS.filter(l => l.phase === ph);
+  PHASE_BOUNDS[ph] = computeBounds(pts);
+});
+
+const map = L.map('map', { zoomControl: true, attributionControl: true, scrollWheelZoom: true });
+map.fitBounds(PHASE_BOUNDS[1], { padding: [30, 30] });
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap',
+  maxZoom: 18
+}).addTo(map);
+
+function makeIcon(type) {
+  const size = type === 'current' ? 13 : type === 'past' ? 7 : 10;
+  const color = type === 'current' ? '#e8c880' : type === 'past' ? '#8a6a3a' : '#c9a96e';
+  const border = type === 'current' ? '#fff' : type === 'past' ? '#4a3818' : '#e8c880';
+  const shadow = type === 'current' ? '0 0 12px rgba(232,200,128,.9),0 0 28px rgba(232,200,128,.4)' : type === 'past' ? '0 0 5px rgba(0,0,0,.7)' : '0 0 8px rgba(201,169,110,.5)';
+  return L.divIcon({
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:${shadow};transition:all .3s"></div>`,
+    className: '', iconAnchor: [size/2, size/2], iconSize: [size, size]
+  });
+}
+
+let markers = [];
+let tailSegments = [];
+const TAIL_LENGTH = 14;   // how many recent hops stay visible before fading out completely
+const TAIL_COLOR = '#c9a96e';
+const TAIL_MAX_OPACITY = 0.6;
+let showTrail = true;
+let currentIdx = 0;
+let currentPhase = 1;
+let playing = true;
+let animTimer = null;
+
+function getSpeedMs() {
+  const v = parseInt(document.getElementById('speed').value);
+  return Math.round(1990 / v); // default slider (4) plays all 201 stops in ~100s
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  const months = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  return `${parseInt(day)}. ${months[parseInt(m)-1]} ${y}`;
+}
+
+// A short, fading "comet tail" behind the current marker instead of one
+// permanently accumulating line — so places Ibsen revisited many times
+// (Christiania, Munich, Rome...) never end up buried under overlapping
+// strokes. TAIL_LENGTH hops stay on screen at once, each older hop fainter
+// than the last, and the oldest one fades out completely.
+function updateTail(idx) {
+  for (let k = 0; k < TAIL_LENGTH; k++) {
+    const segIdx = idx - k; // segment runs from LOCATIONS[segIdx-1] to LOCATIONS[segIdx]
+    const seg = tailSegments[k];
+    if (!showTrail || segIdx <= 0) {
+      seg.setLatLngs([]);
+      continue;
+    }
+    const a = LOCATIONS[segIdx - 1], b = LOCATIONS[segIdx];
+    seg.setLatLngs([[a.lat, a.lon], [b.lat, b.lon]]);
+    const fade = 1 - k / TAIL_LENGTH; // 1 = newest hop, ~0 = about to vanish
+    seg.setStyle({ opacity: TAIL_MAX_OPACITY * fade * fade });
+  }
+}
+
+function maybeChangePhase(idx) {
+  const phase = LOCATIONS[idx].phase;
+  if (phase !== currentPhase) {
+    currentPhase = phase;
+    map.flyToBounds(PHASE_BOUNDS[phase], { padding: [30, 30], duration: 2.2 });
+    document.getElementById('phase-label').textContent = PHASE_NAMES[phase];
+  }
+}
+
+function updateMap(idx) {
+  const loc = LOCATIONS[idx];
+
+  markers.forEach((m, i) => {
+    const type = i === idx ? 'current' : i < idx ? 'past' : 'future';
+    if (type === 'future') {
+      m.setOpacity(0);
+    } else {
+      m.setOpacity(1);
+      m.setIcon(makeIcon(type));
+    }
+  });
+
+  updateTail(idx);
+
+  document.getElementById('year-num').textContent = loc.start.slice(0, 4);
+  document.getElementById('phase-label').textContent = PHASE_NAMES[loc.phase];
+  document.getElementById('timeline').value = idx;
+  document.querySelector('#counter').textContent = `Lokasjon ${idx + 1} av ${LOCATIONS.length}`;
+
+  const panel = document.getElementById('info-content');
+  const visible = LOCATIONS.slice(Math.max(0, idx - 4), idx + 1).reverse();
+  panel.innerHTML = visible.map((l, i) => `
+    <div class="info-entry" style="opacity:${i === 0 ? 1 : Math.max(0.3, 1 - i * 0.18)}">
+      <div class="info-date">${formatDate(l.start)}</div>
+      <div class="info-place">${l.label}</div>
+      ${l.address && l.address !== l.label ? `<div class="info-addr">${l.address}</div>` : ''}
+    </div>`).join('');
+}
+
+function initMarkers() {
+  LOCATIONS.forEach((loc, i) => {
+    const m = L.marker([loc.lat, loc.lon], { icon: makeIcon('future'), opacity: 0 })
+      .addTo(map)
+      .on('click', () => {
+        stopAnimation();
+        currentIdx = i;
+        maybeChangePhase(i);
+        updateMap(i);
+      });
+    m.bindPopup(`
+      <div class="popup-year">${formatDate(loc.start)}</div>
+      <div class="popup-place">${loc.label}</div>
+      ${loc.address && loc.address !== loc.label ? `<div class="popup-addr">${loc.address}</div>` : ''}
+    `);
+    markers.push(m);
+  });
+
+  for (let k = 0; k < TAIL_LENGTH; k++) {
+    tailSegments.push(L.polyline([], { color: TAIL_COLOR, weight: 2.2, opacity: 0 }).addTo(map));
+  }
+}
+
+function step() {
+  if (currentIdx < LOCATIONS.length - 1) {
+    currentIdx++;
+    maybeChangePhase(currentIdx);
+    updateMap(currentIdx);
+    animTimer = setTimeout(step, getSpeedMs());
+  } else {
+    playing = false;
+    document.getElementById('btn-play').classList.remove('active');
+    document.getElementById('btn-pause').classList.remove('active');
+  }
+}
+
+function startAnimation() {
+  if (animTimer) clearTimeout(animTimer);
+  playing = true;
+  document.getElementById('btn-play').classList.add('active');
+  document.getElementById('btn-pause').classList.remove('active');
+  animTimer = setTimeout(step, getSpeedMs());
+}
+
+function stopAnimation() {
+  if (animTimer) clearTimeout(animTimer);
+  playing = false;
+  document.getElementById('btn-play').classList.remove('active');
+  document.getElementById('btn-pause').classList.add('active');
+}
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (currentIdx >= LOCATIONS.length - 1) { currentIdx = 0; currentPhase = LOCATIONS[0].phase; map.flyToBounds(PHASE_BOUNDS[1], { padding: [30,30], duration: 1.5 }); updateMap(0); }
+  startAnimation();
+});
+document.getElementById('btn-pause').addEventListener('click', stopAnimation);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stopAnimation();
+  currentIdx = 0;
+  currentPhase = LOCATIONS[0].phase;
+  map.flyToBounds(PHASE_BOUNDS[1], { padding: [30, 30], duration: 1.5 });
+  updateMap(0);
+  markers.forEach((m, i) => { if (i > 0) m.setOpacity(0); });
+});
+document.getElementById('timeline').addEventListener('input', function() {
+  stopAnimation();
+  currentIdx = parseInt(this.value);
+  maybeChangePhase(currentIdx);
+  updateMap(currentIdx);
+});
+document.getElementById('btn-trail').addEventListener('click', function() {
+  showTrail = !showTrail;
+  this.textContent = `Vis spor: ${showTrail ? 'På' : 'Av'}`;
+  this.classList.toggle('active', showTrail);
+  updateTail(currentIdx);
+});
+
+initMarkers();
+updateMap(0);
+setTimeout(startAnimation, 800);
+</script>
+</body>
+</html>
